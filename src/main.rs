@@ -39,5 +39,4 @@ fn main() {
 
     let t = Trajectory::random(&mut rng);
     println!("t is {:?}", t);
-
 }
