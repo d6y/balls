@@ -73,8 +73,8 @@ struct Coordinates {
 struct Trajectory(Vec<Coordinates>);
 
 impl Trajectory {
-    fn len(&self) -> usize {
-        self.0.len()
+    fn distance(&self) -> Metres {
+        self.0.last().map(|coord| coord.x.clone()).unwrap_or(Metres(0.0))
     }
     fn save(&self, filename: &str) {
         let data: Vec<String> = self
@@ -110,7 +110,7 @@ fn simulate(p: &FiringPlan, params: &Params) -> Trajectory {
     let mut path = Vec::new();
     let mut t = Seconds(0.0);
     let mut y = Metres(0.0);
-    while t.0 == 0.0 || (did_hit_wall && t < t_at_wall) || y.is_positive() {
+    while t.0 == 0.0 || (did_hit_wall && t < t_at_wall) || (!did_hit_wall && y.is_positive()) {
         t = Seconds(t.0 + params.simulation_step_size.0);
         let coords = position(&t);
         y = coords.y.clone();
@@ -122,7 +122,7 @@ fn simulate(p: &FiringPlan, params: &Params) -> Trajectory {
 // We maximize how far the cannon ball has travelled horizontally.
 fn evaluate(p: &FiringPlan, params: &Params) -> Fitness {
     let traj = simulate(&p, &params);
-    Fitness(traj.len() as f64)
+    Fitness(traj.distance().0)
 }
 
 #[derive(Debug)]
@@ -142,8 +142,8 @@ struct Params {
 
 fn main() {
     let params = Params {
-        wall_height: Metres(10.0),
-        wall_distance: Metres(30.0),
+        wall_height: Metres(25.0),
+        wall_distance: Metres(10.0),
         simulation_step_size: Seconds(0.01),
         seed: 1,
         pop_size: 12,
