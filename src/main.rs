@@ -40,8 +40,12 @@ struct MetresPerSecond(f64);
 struct Radians(f64);
 
 impl Radians {
-    fn sin(&self) -> f64 { self.0.sin() }
-    fn cos(&self) -> f64 { self.0.cos() }
+    fn sin(&self) -> f64 {
+        self.0.sin()
+    }
+    fn cos(&self) -> f64 {
+        self.0.cos()
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -64,15 +68,19 @@ impl Trajectory {
         self.0.len()
     }
     fn save(&self, filename: &str) {
-        let data : Vec<String> = self.0.iter().map(|c| format!("{} {}", c.x.0, c.y.0)).collect(); 
+        let data: Vec<String> = self
+            .0
+            .iter()
+            .map(|c| format!("{} {}", c.x.0, c.y.0))
+            .collect();
         fs::write(filename, data.join("\n")).expect("Save failed");
     }
 }
 
 // We fire from (0, 0) and the wall is at (+/-distance, 0) up to (+/-distance, height)
 fn simulate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Trajectory {
-    const G : f64 = 9.81; // gravity on Earth
-    const STEP_SIZE : f64 = 0.1; // seconds
+    const G: f64 = 9.81; // gravity on Earth
+    const STEP_SIZE: f64 = 0.1; // seconds
     let cos_theta = p.angle.cos();
     let sin_theta = p.angle.sin();
 
@@ -105,8 +113,8 @@ fn simulate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Trajectory {
 
 // We maximize how far the cannon bal has travelled horizontally.
 fn evaluate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Fitness {
-   let traj = simulate(&p, &height, &distance);
-   Fitness(traj.len() as f64)
+    let traj = simulate(&p, &height, &distance);
+    Fitness(traj.len() as f64)
 }
 
 fn main() {
@@ -124,16 +132,16 @@ fn main() {
         let fitness = evaluate(&p, &wall_height, &wall_distance);
         println!("\nIndividual {}: {:?},\n{:?}", i, p, fitness);
     }
-/*
-    let p = FiringPlan {
-        velocity: MetresPerSecond(10.0),
-        angle: Radians(0.8),
-    };
+    /*
+        let p = FiringPlan {
+            velocity: MetresPerSecond(10.0),
+            angle: Radians(0.8),
+        };
 
-    let traj = simulate(&p, &wall_height, &wall_distance); 
-    println!("\nSimulated: {:?}", traj); 
+        let traj = simulate(&p, &wall_height, &wall_distance);
+        println!("\nSimulated: {:?}", traj);
 
-    // Write for gnuplot
-    traj.save("traj.dat");
-*/
+        // Write for gnuplot
+        traj.save("traj.dat");
+    */
 }
