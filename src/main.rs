@@ -3,7 +3,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::fs;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 struct FiringPlan {
     velocity: MetresPerSecond,
     angle: Radians,
@@ -33,10 +33,10 @@ impl FiringPlan {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct MetresPerSecond(f64);
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct Radians(f64);
 
 impl Radians {
@@ -48,7 +48,7 @@ impl Radians {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct Fitness(f64); // Bigger is better
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -125,12 +125,19 @@ fn evaluate(p: &FiringPlan, params: &Params) -> Fitness {
     Fitness(traj.len() as f64)
 }
 
+#[derive(Debug)]
+struct Individual {
+    plan: FiringPlan,
+    fitness: Fitness,
+}
+
 struct Params {
     wall_height: Metres,
     wall_distance: Metres,
     simulation_step_size: Seconds,
     seed: u64,
     pop_size: usize,
+    num_evaluations: usize,
 }
 
 fn main() {
@@ -139,15 +146,47 @@ fn main() {
         wall_distance: Metres(30.0),
         simulation_step_size: Seconds(0.01),
         seed: 1,
-        pop_size: 4,
+        pop_size: 12,
+        num_evaluations: 1000,
     };
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
 
-    let ps = FiringPlan::randoms(&mut rng, params.pop_size);
+    fn mutate<R : Rng>(plan: &FiringPlan, rng: &mut R) -> FiringPlan {
+        FiringPlan::new( 
+            MetresPerSecond( (plan.velocity.0 + rng.gen::<f64>() - 0.5).max(0.1) ),
+            Radians( (plan.angle.0 + rng.gen::<f64>() - 0.5).max(0.1).min(PI/2.0) )
+        )
+    }
 
-    for (i, p) in ps.iter().enumerate() {
-        let fitness = evaluate(&p, &params);
-        println!("\nIndividual {}: {:?},\n{:?}", i, p, fitness);
+    let mut best_fitness_to_date = Fitness(0.0);
+
+    let mut ps = FiringPlan::randoms(&mut rng, params.pop_size);
+
+    for r in 0..params.num_evaluations {
+
+        let mut pop: Vec<Individual> = ps.iter().map(|plan| {
+            let fitness = evaluate(&plan, &params);
+            Individual { plan: plan.clone(), fitness }
+        }).collect();
+
+        pop.sort_by(|a,b| b.fitness.partial_cmp(&a.fitness).unwrap());
+
+        if let Some(best) = pop.first() {
+            if best.fitness > best_fitness_to_date {
+                best_fitness_to_date = best.fitness.clone();
+                println!("{:?}", best);
+                let traj = simulate(&best.plan, &params);
+                traj.save(&format!("traj/{}.dat", r));
+            }
+        }
+
+        for i in 0..params.pop_size {
+            ps[i] = if i <= 1 {
+                pop[i].plan.clone()
+            } else {
+                mutate(&(pop[i].plan), &mut rng)
+            }
+        }
     }
 }
