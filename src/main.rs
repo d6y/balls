@@ -3,7 +3,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::fs;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 struct FiringPlan {
     velocity: MetresPerSecond,
     angle: Radians,
@@ -152,10 +152,14 @@ fn main() {
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
 
-    fn mutate<R : Rng>(plan: &FiringPlan, rng: &mut R) -> FiringPlan {
-        FiringPlan::new( 
-            MetresPerSecond( (plan.velocity.0 + rng.gen::<f64>() - 0.5).max(0.1) ),
-            Radians( (plan.angle.0 + rng.gen::<f64>() - 0.5).max(0.1).min(PI/2.0) )
+    fn mutate<R: Rng>(plan: &FiringPlan, rng: &mut R) -> FiringPlan {
+        FiringPlan::new(
+            MetresPerSecond((plan.velocity.0 + rng.gen::<f64>() - 0.5).max(0.1)),
+            Radians(
+                (plan.angle.0 + rng.gen::<f64>() - 0.5)
+                    .max(0.1)
+                    .min(PI / 2.0),
+            ),
         )
     }
 
@@ -164,13 +168,18 @@ fn main() {
     let mut ps = FiringPlan::randoms(&mut rng, params.pop_size);
 
     for r in 0..params.num_evaluations {
+        let mut pop: Vec<Individual> = ps
+            .iter()
+            .map(|plan| {
+                let fitness = evaluate(&plan, &params);
+                Individual {
+                    plan: plan.clone(),
+                    fitness,
+                }
+            })
+            .collect();
 
-        let mut pop: Vec<Individual> = ps.iter().map(|plan| {
-            let fitness = evaluate(&plan, &params);
-            Individual { plan: plan.clone(), fitness }
-        }).collect();
-
-        pop.sort_by(|a,b| b.fitness.partial_cmp(&a.fitness).unwrap());
+        pop.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
         if let Some(best) = pop.first() {
             if best.fitness > best_fitness_to_date {
