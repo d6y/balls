@@ -93,25 +93,25 @@ fn simulate(p: &FiringPlan, params: &Params) -> Trajectory {
     let sin_theta = p.angle.sin();
 
     // Calculate co-ordinates of cannon-ball at time t:
-    let position = |t: &f64| {
-        let vt = p.velocity.0 * t;
+    let position = |t: &Seconds| {
+        let vt = p.velocity.0 * t.0;
         let x = Metres(vt * cos_theta);
-        let y = Metres(vt * sin_theta - (0.5 * G * t * t));
+        let y = Metres(vt * sin_theta - (0.5 * G * t.0 * t.0));
         Coordinates { x, y }
     };
 
     // What's the cannon-ball height at the point of the wall?
     // i.e., did we clear the wall?
-    let t_at_wall = params.wall_distance.0 / (p.velocity.0 * cos_theta);
+    let t_at_wall = Seconds(params.wall_distance.0 / (p.velocity.0 * cos_theta));
     let coords_at_wall = position(&t_at_wall);
     let did_hit_wall = coords_at_wall.y.is_positive() && coords_at_wall.y < params.wall_height;
 
     // Build up cannon-ball trajectory:
     let mut path = Vec::new();
-    let mut t = 0.0;
+    let mut t = Seconds(0.0);
     let mut y = Metres(0.0);
-    while t == 0.0 || (did_hit_wall && t < t_at_wall) || y.is_positive() {
-        t = t + params.simulation_step_size.0;
+    while t.0 == 0.0 || (did_hit_wall && t < t_at_wall) || y.is_positive() {
+        t = Seconds(t.0 + params.simulation_step_size.0);
         let coords = position(&t);
         y = coords.y.clone();
         path.push(coords);
@@ -130,6 +130,7 @@ struct Params {
     wall_distance: Metres,
     simulation_step_size: Seconds,
     seed: u64,
+    pop_size: usize,
 }
 
 fn main() {
@@ -138,28 +139,15 @@ fn main() {
         wall_distance: Metres(30.0),
         simulation_step_size: Seconds(0.01),
         seed: 1,
+        pop_size: 4,
     };
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
 
-    let pop_size = 4;
-
-    let ps = FiringPlan::randoms(&mut rng, pop_size);
+    let ps = FiringPlan::randoms(&mut rng, params.pop_size);
 
     for (i, p) in ps.iter().enumerate() {
         let fitness = evaluate(&p, &params);
         println!("\nIndividual {}: {:?},\n{:?}", i, p, fitness);
     }
-    /*
-        let p = FiringPlan {
-            velocity: MetresPerSecond(10.0),
-            angle: Radians(0.8),
-        };
-
-        let traj = simulate(&p, &wall_height, &wall_distance);
-        println!("\nSimulated: {:?}", traj);
-
-        // Write for gnuplot
-        traj.save("traj.dat");
-    */
 }
