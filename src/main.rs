@@ -141,6 +141,7 @@ struct Params {
     seed: u64,
     pop_size: usize,
     num_evaluations: usize,
+    elitism: usize,
 }
 
 fn main() {
@@ -151,6 +152,7 @@ fn main() {
         seed: 1,
         pop_size: 25,
         num_evaluations: 3000,
+        elitism: 1,
     };
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
@@ -194,7 +196,7 @@ fn main() {
         }
 
         for i in 0..params.pop_size {
-            ps[i] = if i <= 1 {
+            ps[i] = if i <= params.elitism {
                 pop[i].plan.clone()
             } else {
                 mutate(&(pop[i].plan), &mut rng)
