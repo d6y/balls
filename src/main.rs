@@ -52,7 +52,16 @@ impl Radians {
 struct Fitness(f64); // Bigger is better
 
 #[derive(Debug, PartialEq, PartialOrd)]
+struct Seconds(f64);
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct Metres(f64);
+
+impl Metres {
+    fn is_positive(&self) -> bool {
+        self.0 > 0.0
+    }
+}
 
 #[derive(Debug)]
 struct Coordinates {
@@ -78,9 +87,8 @@ impl Trajectory {
 }
 
 // We fire from (0, 0) and the wall is at (+/-distance, 0) up to (+/-distance, height)
-fn simulate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Trajectory {
+fn simulate(p: &FiringPlan, params: &Params) -> Trajectory {
     const G: f64 = 9.81; // gravity on Earth
-    const STEP_SIZE: f64 = 0.1; // seconds
     let cos_theta = p.angle.cos();
     let sin_theta = p.angle.sin();
 
@@ -94,42 +102,52 @@ fn simulate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Trajectory {
 
     // What's the cannon-ball height at the point of the wall?
     // i.e., did we clear the wall?
-    let t_at_wall = distance.0 / (p.velocity.0 * cos_theta);
+    let t_at_wall = params.wall_distance.0 / (p.velocity.0 * cos_theta);
     let coords_at_wall = position(&t_at_wall);
-    let did_hit_wall = coords_at_wall.y >= Metres(0.0) && coords_at_wall.y < *height;
+    let did_hit_wall = coords_at_wall.y.is_positive() && coords_at_wall.y < params.wall_height;
 
     // Build up cannon-ball trajectory:
     let mut path = Vec::new();
     let mut t = 0.0;
     let mut y = Metres(0.0);
-    while t == 0.0 || (did_hit_wall && t < t_at_wall) || y >= Metres(0.0) {
-        t = t + STEP_SIZE;
+    while t == 0.0 || (did_hit_wall && t < t_at_wall) || y.is_positive() {
+        t = t + params.simulation_step_size.0;
         let coords = position(&t);
-        y = Metres(coords.y.0);
+        y = coords.y.clone();
         path.push(coords);
     }
     Trajectory(path)
 }
 
-// We maximize how far the cannon bal has travelled horizontally.
-fn evaluate(p: &FiringPlan, height: &Metres, distance: &Metres) -> Fitness {
-    let traj = simulate(&p, &height, &distance);
+// We maximize how far the cannon ball has travelled horizontally.
+fn evaluate(p: &FiringPlan, params: &Params) -> Fitness {
+    let traj = simulate(&p, &params);
     Fitness(traj.len() as f64)
 }
 
-fn main() {
-    let wall_height = Metres(10.0);
-    let wall_distance = Metres(30.0);
+struct Params {
+    wall_height: Metres,
+    wall_distance: Metres,
+    simulation_step_size: Seconds,
+    seed: u64,
+}
 
-    let seed: u64 = 1;
-    let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
+fn main() {
+    let params = Params {
+        wall_height: Metres(10.0),
+        wall_distance: Metres(30.0),
+        simulation_step_size: Seconds(0.01),
+        seed: 1,
+    };
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
 
     let pop_size = 4;
 
     let ps = FiringPlan::randoms(&mut rng, pop_size);
 
     for (i, p) in ps.iter().enumerate() {
-        let fitness = evaluate(&p, &wall_height, &wall_distance);
+        let fitness = evaluate(&p, &params);
         println!("\nIndividual {}: {:?},\n{:?}", i, p, fitness);
     }
     /*
