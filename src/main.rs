@@ -74,7 +74,10 @@ struct Trajectory(Vec<Coordinates>);
 
 impl Trajectory {
     fn distance(&self) -> Metres {
-        self.0.last().map(|coord| coord.x.clone()).unwrap_or(Metres(0.0))
+        self.0
+            .last()
+            .map(|coord| coord.x.clone())
+            .unwrap_or(Metres(0.0))
     }
     fn save(&self, filename: &str) {
         let data: Vec<String> = self
@@ -146,8 +149,8 @@ fn main() {
         wall_distance: Metres(10.0),
         simulation_step_size: Seconds(0.01),
         seed: 1,
-        pop_size: 12,
-        num_evaluations: 1000,
+        pop_size: 25,
+        num_evaluations: 3000,
     };
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(params.seed);
@@ -184,7 +187,7 @@ fn main() {
         if let Some(best) = pop.first() {
             if best.fitness > best_fitness_to_date {
                 best_fitness_to_date = best.fitness.clone();
-                println!("{:?}", best);
+                println!("Epoc {} Fitness {}", r, best.fitness.0);
                 let traj = simulate(&best.plan, &params);
                 traj.save(&format!("traj/{}.dat", r));
             }
